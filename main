@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>catbomb</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
+      background: black;
+      overflow: hidden;
+      position: relative;
+      user-select: none;
+    }
+    #counter {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 15vw;
+      font-weight: bold;
+      color: red;
+      z-index: 10;
+    }
+    #boom-screen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: black;
+      color: red;
+      font-size: 15vw;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+    #secret-button {
+      position: fixed;
+      bottom: 0; left: 0;
+      width: 50px; height: 50px;
+      background: transparent;
+      border: none;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    #cat-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1100;
+    }
+    .cat {
+      position: absolute;
+      user-select: none;
+      pointer-events: auto;
+      image-rendering: pixelated;
+      transform-origin: center center;
+    }
+    #bg-music {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="counter"></div>
+  <div id="boom-screen">💥</div>
+  <button id="secret-button" title="Secret button"></button>
+  <div id="cat-container"></div>
+  <audio id="bg-music" src="fly-at-the-court.mp3" loop></audio>
+
+  <script>
+    const counter = document.getElementById('counter');
+    const boomScreen = document.getElementById('boom-screen');
+    const secretBtn = document.getElementById('secret-button');
+    const catContainer = document.getElementById('cat-container');
+    const music = document.getElementById('bg-music');
+    const catURL = "https://media1.giphy.com/media/v1.Y2lkPTZjMDliOTUyOHkyeWljMDVtYWhkcml6ZmZjcWtvMGQ0eXFyczhidzVvaTN6cXAzMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/n3UBd63oVlQLC/giphy.gif";
+
+    const countdown = [5, 4, 3, 2, 1];
+    let index = 0;
+
+    function playBuzz() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 50;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      osc.start();
+      setTimeout(() => {
+        osc.stop();
+        ctx.close();
+      }, 1000);
+    }
+
+    function boom() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(20, ctx.currentTime);
+      gain.gain.setValueAtTime(1, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
+      osc.stop(ctx.currentTime + 1);
+    }
+
+    function next() {
+      if (index < countdown.length) {
+        counter.textContent = countdown[index];
+        playBuzz();
+        setTimeout(() => {
+          counter.textContent = '';
+          index++;
+          setTimeout(next, 1000);
+        }, 1000);
+      } else {
+        boom();
+        counter.textContent = '';
+        boomScreen.style.display = 'flex';
+      }
+    }
+
+    // spawn config
+    let spawnedCats = [];
+    const maxCats = 100;
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    function doesOverlap(newBox) {
+      return spawnedCats.some(box => {
+        return !(newBox.right < box.left || newBox.left > box.right || newBox.bottom < box.top || newBox.top > box.bottom);
+      });
+    }
+
+    function getNextSpawn() {
+      for (let r = 20; r < Math.min(centerX, centerY); r += 40) {
+        for (let angle = 0; angle < 360; angle += 30) {
+          const rad = angle * Math.PI / 180;
+          const size = 40 + Math.random() * 40;
+          const x = centerX + Math.cos(rad) * r - size / 2;
+          const y = centerY + Math.sin(rad) * r - size / 2;
+          const newBox = {left: x, top: y, right: x + size, bottom: y + size};
+          if (!doesOverlap(newBox)) {
+            return {x, y, size, angle: Math.random() * 360, box: newBox};
+          }
+        }
+      }
+      return null;
+    }
+
+    function spawnCat() {
+      const spawn = getNextSpawn();
+      if (!spawn) return;
+
+      const img = document.createElement('img');
+      img.src = catURL;
+      img.className = 'cat';
+      img.style.width = `${spawn.size}px`;
+      img.style.height = `${spawn.size}px`;
+      img.style.left = `${spawn.x}px`;
+      img.style.top = `${spawn.y}px`;
+      img.style.transform = `rotate(${spawn.angle}deg)`;
+      img.onclick = spawnCat;
+
+      catContainer.appendChild(img);
+      spawnedCats.push(spawn.box);
+    }
+
+    secretBtn.onclick = () => {
+      boomScreen.style.display = 'none';
+      music.play();
+      if (spawnedCats.length === 0) spawnCat();
+    };
+
+    next();
+  </script>
+</body>
+</html>
