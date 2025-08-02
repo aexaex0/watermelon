@@ -138,16 +138,20 @@
     }
 
     function getNextSpawn() {
-      for (let r = 20; r < Math.min(centerX, centerY); r += 40) {
-        for (let angle = 0; angle < 360; angle += 30) {
-          const rad = angle * Math.PI / 180;
-          const size = 40 + Math.random() * 40;
-          const x = centerX + Math.cos(rad) * r - size / 2;
-          const y = centerY + Math.sin(rad) * r - size / 2;
-          const newBox = {left: x, top: y, right: x + size, bottom: y + size};
-          if (!doesOverlap(newBox)) {
-            return {x, y, size, angle: Math.random() * 360, box: newBox};
-          }
+      for (let attempt = 0; attempt < 500; attempt++) {
+        const radius = 50 + Math.random() * (Math.min(centerX, centerY) - 50);
+        const angle = Math.random() * 2 * Math.PI;
+        const size = 40 + Math.random() * 40;
+        const x = centerX + Math.cos(angle) * radius - size / 2;
+        const y = centerY + Math.sin(angle) * radius - size / 2;
+
+        const newBox = {
+          left: x, top: y,
+          right: x + size, bottom: y + size
+        };
+
+        if (!doesOverlap(newBox)) {
+          return { x, y, size, angle: Math.random() * 360, box: newBox };
         }
       }
       return null;
@@ -173,7 +177,11 @@
 
     secretBtn.onclick = () => {
       boomScreen.style.display = 'none';
-      music.play();
+
+      music.play().catch(e => {
+        console.log("zene nem indítható automatikusan:", e);
+      });
+
       if (spawnedCats.length === 0) spawnCat();
     };
 
