@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="hu">
 <head>
   <meta charset="UTF-8" />
@@ -101,7 +100,7 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(20, ctx.currentTime);
+      osc.frequency.setValueAtTime(25, ctx.currentTime); // oktávval lejjebb, 50-ről 25-re
       gain.gain.setValueAtTime(1, ctx.currentTime);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -128,6 +127,7 @@
 
     // spawn config
     let spawnedCats = [];
+    const maxCats = 100;
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
 
@@ -138,20 +138,16 @@
     }
 
     function getNextSpawn() {
+      // kisugárzó körkörös pozíciók
       for (let r = 20; r < Math.min(centerX, centerY); r += 40) {
-        // itt randomizálom a szögeket, hogy ne legyen szabályos hatszög mintázat
-        const angles = [];
-        for(let a=0; a<12; a++) angles.push(a * 30 + Math.random()*20 - 10);
-
-        for (let i = 0; i < angles.length; i++) {
-          const angle = angles[i];
+        for (let angle = 0; angle < 360; angle += 15) { // sűrűbb szögválasztás, hogy ne legyen hálós
           const rad = angle * Math.PI / 180;
-          const size = 40 + Math.random() * 40;
+          const size = 40 + Math.random() * 40; // ide csak irány, nem kell, mert spawnCat randomizálja méretet
           const x = centerX + Math.cos(rad) * r - size / 2;
           const y = centerY + Math.sin(rad) * r - size / 2;
           const newBox = {left: x, top: y, right: x + size, bottom: y + size};
           if (!doesOverlap(newBox)) {
-            return {x, y, size, angle: Math.random() * 360, box: newBox};
+            return {x, y, angle: Math.random() * 360, box: newBox};
           }
         }
       }
@@ -165,26 +161,29 @@
       const img = document.createElement('img');
       img.src = catURL;
       img.className = 'cat';
-      img.style.width = `${spawn.size}px`;
-      img.style.height = `${spawn.size}px`;
+
+      // random scale 20-80 px
+      const size = 20 + Math.random() * 60;
+      img.style.width = `${size}px`;
+      img.style.height = `${size}px`;
+
       img.style.left = `${spawn.x}px`;
       img.style.top = `${spawn.y}px`;
       img.style.transform = `rotate(${spawn.angle}deg)`;
       img.onclick = spawnCat;
 
       catContainer.appendChild(img);
-      spawnedCats.push(spawn.box);
+      spawnedCats.push({
+        left: spawn.x,
+        top: spawn.y,
+        right: spawn.x + size,
+        bottom: spawn.y + size
+      });
     }
 
     secretBtn.onclick = () => {
       boomScreen.style.display = 'none';
-
-      if (music.paused) {
-        music.play().catch(() => {
-          // ha play nem sikerül, akkor itt lehet hibakezelni, de nem fontos
-        });
-      }
-
+      music.play();
       if (spawnedCats.length === 0) spawnCat();
     };
 
